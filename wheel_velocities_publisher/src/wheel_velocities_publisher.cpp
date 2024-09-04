@@ -2,7 +2,9 @@
 #include "std_msgs/msg/float32_multi_array.hpp"
 #include <chrono>
 #include <vector>
-
+#include <Eigen/Dense>
+ 
+using Eigen::MatrixXd;
 using namespace std::chrono_literals;
 
 enum nodeState {
@@ -61,14 +63,36 @@ private:
     }
     RCLCPP_INFO(get_logger(), state_values[nstate].nstate_string.c_str());
     std::vector<float> u_vector(std::begin(state_values[nstate].u),
-                                std::end(state_values[nstate].u));
+                                 std::end(state_values[nstate].u));
+    //std::vector<float> u_vector =  twist2wheels(1.5,1,0);
     message.data = u_vector;
     publisher_->publish(message);
     timer1_counter++;
   }
 
+  std::vector<float> twist2wheels(double wz, double vx, double vy){
+    std::vector<float> u_vector;
+    MatrixXd twist(3,1);
+    twist(0,0) = wz;
+    twist(1,0) = vx;
+    twist(2,0) = vy;
+    MatrixXd H(4,3);
+    H(0,0) = (-l-w)/r; H(0,1) =  1/r; H(0,2) = -1/r;
+    H(1,0) = (l+w)/r;  H(1,1) =  1/r; H(1,2) =  1/r;
+    H(2,0) = (l+w)/r;  H(2,1) =  1/r; H(2,2) = -1/r;
+    H(3,0) = (-l-w)/r; H(3,1) =  1/r; H(3,2) =  1/r;
+    MatrixXd u = H * twist;
+    u_vector.push_back(u(0,0));
+    u_vector.push_back(u(1,0));
+    u_vector.push_back(u(2,0));
+    u_vector.push_back(u(3,0));
+    return u_vector;
+  
+  }
   int timer1_counter = 0;
-
+  double l = 0.500/2;
+  double r = 0.254/2;
+  double w = 0.548/2;
   rclcpp::TimerBase::SharedPtr timer_1_;
   rclcpp::Publisher<std_msgs::msg::Float32MultiArray>::SharedPtr publisher_;
 };

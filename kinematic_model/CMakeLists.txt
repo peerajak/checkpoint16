@@ -9,6 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
 if(BUILD_TESTING)
@@ -24,7 +25,7 @@ if(BUILD_TESTING)
 endif()
 
 add_executable(kinematic_model src/kinematic_model.cpp)
-ament_target_dependencies(kinematic_model rclcpp std_msgs)
+ament_target_dependencies(kinematic_model rclcpp std_msgs geometry_msgs)
 target_link_libraries(kinematic_model
     Eigen3::Eigen
 )
