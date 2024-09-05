@@ -24,7 +24,7 @@ public:
 
     //------- 2. timer_1 related -----------//
     timer_1_ = this->create_wall_timer(
-        2000ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));
+        1000ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));
     //------- 3. Odom related  -----------//
     callback_group_3_odom = this->create_callback_group(
         rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -57,14 +57,14 @@ private:
         double dx = std::get<0>(it);
         double dy = std::get<1>(it);
         double dphi = std::get<2>(it);
-        int max_iteration = 300;
+        int max_iteration = 100;
         
         for (int i=0; i<max_iteration;i++){
             MatrixXd vb = velocity2twist(dphi, dx, dy);
             std::vector<float> u_vector = twist2wheels(vb);
             message.data = u_vector;
             publisher_->publish(message);  
-            RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", dphi, dx,dy);          
+            RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));          
             //loop_rate.sleep();
             usleep(10000);
         }
@@ -79,6 +79,7 @@ private:
   }
 
   MatrixXd velocity2twist(double dphi, double dx, double dy){
+    RCLCPP_INFO(get_logger(), "velocity2twist current_yaw_rad_ %f",current_yaw_rad_);  
     MatrixXd R(3,3);
     R(0,0) = 1; R(0,1) = 0; R(0,2) = 0;
     R(1,0) = 0; R(1,1) = cos(current_yaw_rad_); R(1,2) =  sin(current_yaw_rad_); 
@@ -163,7 +164,7 @@ private:
   std::vector<std::tuple<double, double>> waypoints {std::make_tuple(0,0),std::make_tuple(1,1),std::make_tuple(2,0),
                                 std::make_tuple(3,-1),std::make_tuple(4,0),std::make_tuple(3,1),std::make_tuple(2,0),
                                 std::make_tuple(1,-1),std::make_tuple(0,0)};
-
+  //std::vector<std::tuple<double, double>> waypoints {std::make_tuple(0,0),std::make_tuple(0,1)};
  
   rclcpp::TimerBase::SharedPtr timer_1_;
   int timer1_counter;
