@@ -38,7 +38,7 @@ private:
   {
     MatrixXd u(4,1);
     
-     RCLCPP_INFO(this->get_logger(), "topic callback");
+     RCLCPP_INFO(this->get_logger(), "wheel_speed topic callback");
     for(unsigned int i = 0; i < msg->data.size(); i++){
     u(i,0) = msg->data[i];
     RCLCPP_INFO(this->get_logger(), "I heard: '%f'",u(i,0));
