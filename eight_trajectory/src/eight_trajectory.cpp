@@ -24,7 +24,7 @@ public:
 
     //------- 2. timer_1 related -----------//
     timer_1_ = this->create_wall_timer(
-        1000ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));
+        10ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));
     //------- 3. Odom related  -----------//
     callback_group_3_odom = this->create_callback_group(
         rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -49,28 +49,30 @@ public:
 private:
   void timer1_callback() {
     auto message = std_msgs::msg::Float32MultiArray();
-    //rclcpp::Rate loop_rate(0.05);
+    //rclcpp::Rate loop_rate(0.01);
     if(!motions.empty()){
+
         std::tuple<double,double,double> it = motions.front();
         RCLCPP_INFO(get_logger(), "Timer 1 Callbac");
         
         double dx = std::get<0>(it);
         double dy = std::get<1>(it);
-        double dphi = std::get<2>(it);
-        int max_iteration = 100;
+        double dphi = std::get<2>(it)/3;
+        //int max_iteration = 300;
         
-        for (int i=0; i<max_iteration;i++){
+        //for (int i=0; i<max_iteration;i++){
             MatrixXd vb = velocity2twist(dphi, dx, dy);
             std::vector<float> u_vector = twist2wheels(vb);
             message.data = u_vector;
             publisher_->publish(message);  
             RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));          
             //loop_rate.sleep();
-            usleep(10000);
-        }
+            //usleep(10000);
+        //}
   
-    timer1_counter++;
-    motions.pop_front();
+        timer1_counter++;
+        if(timer1_counter % 300 == 0)
+            motions.pop_front();
     }else{
         RCLCPP_INFO(get_logger(), "Timer shutdown");
         timer_1_->cancel();
