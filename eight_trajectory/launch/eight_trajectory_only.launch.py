@@ -12,13 +12,6 @@ def generate_launch_description():
             output='screen',
             emulate_tty=True,
             parameters=[{'use_sim_time': True}]         
-        ),
-        Node(
-            package='kinematic_model',
-            executable='kinematic_model',
-            output='screen',
-            emulate_tty=True,
-            parameters=[{'use_sim_time': True}]         
         )
         ]
     )

@@ -44,12 +44,11 @@ private:
     RCLCPP_INFO(this->get_logger(), "I heard: '%f'",u(i,0));
     }
     MatrixXd twist = KinematicLeastSquareNormalEq(u);
-    RCLCPP_INFO(this->get_logger(), "twist wz: '%f'",twist(0,0));
-    RCLCPP_INFO(this->get_logger(), "twist vx: '%f'",twist(1,0));
-    RCLCPP_INFO(this->get_logger(), "twist vy: '%f'",twist(2,0));
+    RCLCPP_INFO(this->get_logger(), "twist wz: %f vx ,%f, vy %f",twist(0,0),twist(1,0),twist(2,0));
+    ling.angular.z = twist(0,0);
     ling.linear.x = twist(1,0);
     ling.linear.y = twist(2,0);
-    ling.angular.z = twist(0,0);
+
     this->move_robot(ling);
   }
 
