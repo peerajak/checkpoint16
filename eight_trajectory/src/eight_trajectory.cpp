@@ -174,10 +174,13 @@ private:
   double r = 0.254/2;
   double w = 0.548/2;
 
-  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
-                                std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
-  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1)};
+//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
+//                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
+//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
+//                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
+//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,0),std::make_tuple(0,1,1)};
  
   rclcpp::TimerBase::SharedPtr timer_1_;
   int timer1_counter;
