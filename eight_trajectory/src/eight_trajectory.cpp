@@ -43,7 +43,7 @@ public:
   }
 
 private:
-    int max_iter = 20;
+    //int max_iter = 20;
     double avg_wz, avg_vx, avg_vy;
   void timer1_callback() {
     auto message = std_msgs::msg::Float32MultiArray();
@@ -58,10 +58,19 @@ private:
         double dy = std::get<2>(it);
  
         //int max_iteration = 300;
-        
-        for (int i=0; i<max_iter;i++){
             MatrixXd vb = velocity2twist(dphi, dx, dy);
             std::vector<float> u_vector = twist2wheels(vb);
+            double speed_x = vb(1,0);
+            double speed_y = vb(2,0);
+            double speed_norm = sqrt(speed_x*speed_x+speed_y*speed_y);
+            double distance_to_travel = sqrt(dx*dx+dy*dy);
+            double time_to_travel = distance_to_travel/speed_norm;//in sec
+
+            int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
+            int max_iter = time_to_travel*1000000/hz_inverse_us;
+            RCLCPP_INFO(get_logger(), "distance to travel %f, time to travel %f, iter %d", distance_to_travel,time_to_travel, max_iter ); 
+    
+        for (int i=0; i<max_iter;i++){
             message.data = u_vector;
             publisher_->publish(message);  
             RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));  
@@ -69,7 +78,7 @@ private:
             avg_vx += vb(1,0);
             avg_vy += vb(2,0);       
             //loop_rate.sleep();
-            usleep(100000);
+            usleep(hz_inverse_us);
         }
   
         timer1_counter++;
@@ -180,7 +189,7 @@ private:
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
-  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,0),std::make_tuple(0,1,1)};
+  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,0),std::make_tuple(0,1,0)};
  
   rclcpp::TimerBase::SharedPtr timer_1_;
   int timer1_counter;
