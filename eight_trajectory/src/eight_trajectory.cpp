@@ -24,7 +24,7 @@ public:
 
     //------- 2. timer_1 related -----------//
     timer_1_ = this->create_wall_timer(
-        4800ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));
+        1000ms, std::bind(&EightTrajectoryWheels::timer1_callback, this));//nothing about 1 sec
     //------- 3. Odom related  -----------//
     callback_group_3_odom = this->create_callback_group(
         rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -36,67 +36,83 @@ public:
         std::bind(&EightTrajectoryWheels::odom_callback, this,
                   std::placeholders::_1), options3_odom);
 
-    avg_wz = 0;
-    avg_vx = 0;
-    avg_vy = 0;
+    //ref_points.push_back(std::make_tuple(0,0));
+    double cur_ref_x = 0;
+    double cur_ref_y = 0;
+    //RCLCPP_INFO(this->get_logger(), "initialize ref_point (x,y) = %f,%f ", cur_ref_x, cur_ref_y);
+    for (auto iter = waypoints.begin();
+     iter != waypoints.end(); iter++){
+        std::tuple<double,double,double> i_th = *iter;
+        double dx = std::get<1>(i_th);
+        double dy = std::get<2>(i_th);
+        cur_ref_x += dx;
+        cur_ref_y += dy;
+        ref_points.push_back(std::make_tuple(cur_ref_x,cur_ref_y));
+        RCLCPP_INFO(this->get_logger(), "initialize ref_point (x,y) = %f,%f ", cur_ref_x, cur_ref_y);
+    }
   
   }
 
 private:
     //int max_iter = 20;
-    double avg_wz, avg_vx, avg_vy;
+
   void timer1_callback() {
+    RCLCPP_INFO(this->get_logger(), "Timer Callback ");
+    timer_1_->cancel();
+    //assert(false);
+    std::thread{std::bind(&EightTrajectoryWheels::execute, this)}.detach();
+  }
+  void execute() {
     auto message = std_msgs::msg::Float32MultiArray();
     //rclcpp::Rate loop_rate(0.01);
-    if(!waypoints.empty()){
+    while(!ref_points.empty()){
 
         std::tuple<double,double,double> it = waypoints.front();
-        RCLCPP_INFO(get_logger(), "Timer 1 Callbac");
+        std::tuple<double,double> it2 = ref_points.front();
+         RCLCPP_INFO(this->get_logger(), "ref_point (x,y) = %f,%f ", std::get<0>(it2), std::get<1>(it2));
 
-        double dphi = std::get<0>(it)/3;  
-        double dx = std::get<1>(it);
-        double dy = std::get<2>(it);
- 
-        //int max_iteration = 300;
-            MatrixXd vb = velocity2twist(dphi, dx, dy);
-            std::vector<float> u_vector = twist2wheels(vb);
-            double speed_x = vb(1,0);
-            double speed_y = vb(2,0);
-            double speed_norm = sqrt(speed_x*speed_x+speed_y*speed_y);
-            double distance_to_travel = sqrt(dx*dx+dy*dy);
-            double time_to_travel = distance_to_travel/speed_norm;//in sec
+        double dphi = std::get<0>(it)/3; 
+        double distance_error = 1000;//just a large number
+        double error_tolerance = 0.1; 
+        unsigned int section_counter = 0;
+        while( distance_error > error_tolerance){
+            double dx = std::get<0>(it2) - current_pos_.x;
+            double dy = std::get<1>(it2) - current_pos_.y;
 
-            int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
-            int max_iter = time_to_travel*1000000/hz_inverse_us;
-            RCLCPP_INFO(get_logger(), "distance to travel %f, time to travel %f, iter %d", distance_to_travel,time_to_travel, max_iter ); 
     
-        for (int i=0; i<max_iter;i++){
-            message.data = u_vector;
-            publisher_->publish(message);  
-            RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));  
-            avg_wz += vb(0,0);
-            avg_vx += vb(1,0);
-            avg_vy += vb(2,0);       
-            //loop_rate.sleep();
-            usleep(hz_inverse_us);
+            //int max_iteration = 300;
+                MatrixXd vb = velocity2twist(dphi, dx, dy);
+                std::vector<float> u_vector = twist2wheels(vb);
+                double speed_x = vb(1,0);
+                double speed_y = vb(2,0);
+                double speed_norm = sqrt(speed_x*speed_x+speed_y*speed_y);
+                double distance_to_travel = dphi == 0? sqrt(dx*dx+dy*dy) : abs(dphi*sqrt(dx*dx+dy*dy));
+                double time_to_travel = distance_to_travel/speed_norm;//in sec
+
+                int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
+                int max_iter = time_to_travel*1000000/hz_inverse_us;
+                RCLCPP_INFO(get_logger(), "distance to travel %f, time to travel %f, iter %d", distance_to_travel,time_to_travel, max_iter ); 
+        
+            for (int i=0; i<max_iter;i++){
+                message.data = u_vector;
+                publisher_->publish(message);  
+                //RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));  
+                //loop_rate.sleep();
+                usleep(hz_inverse_us);
+                section_counter++;
+            }
+            dx = std::get<0>(it2) - current_pos_.x;
+            dy = std::get<1>(it2) - current_pos_.y;
+            distance_error = dphi == 0? sqrt(dx*dx+dy*dy) : abs(dphi*sqrt(dx*dx+dy*dy));
+
         }
-  
+        sleep(1);
         timer1_counter++;
-        //if(timer1_counter % max_iter == 0){
-            waypoints.pop_front();
-            avg_wz /= max_iter;
-            avg_vx /= max_iter;
-            avg_vy /= max_iter;
-            RCLCPP_INFO(get_logger(), "average wz %f, vx %f, vy %f", avg_wz, avg_vx, avg_vy); 
-            avg_wz = 0;
-            avg_vx = 0;
-            avg_vy = 0;
-       // }
-            
-    }else{
-        RCLCPP_INFO(get_logger(), "Timer shutdown");
-        timer_1_->cancel();
+
+        waypoints.pop_front();
+        ref_points.pop_front(); 
     }
+    RCLCPP_INFO(get_logger(), "No more waypoints");  
 
   }
 
@@ -183,13 +199,14 @@ private:
   double r = 0.254/2;
   double w = 0.548/2;
 
-//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-//                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
-//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
+                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
+                                std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
-  std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,0),std::make_tuple(0,1,0)};
+  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-3.14,1,0)};//,std::make_tuple(0,1,1)};
+  std::list<std::tuple<double,double>> ref_points;
  
   rclcpp::TimerBase::SharedPtr timer_1_;
   int timer1_counter;
@@ -203,6 +220,8 @@ int main(int argc, char *argv[]) {
   rclcpp::executors::MultiThreadedExecutor executor;
   executor.add_node(eight_trajectory_subscriber);
   executor.spin();
+
+
 
   //rclcpp::spin(std::make_shared<EightTrajectoryWheels>());
   rclcpp::shutdown();
