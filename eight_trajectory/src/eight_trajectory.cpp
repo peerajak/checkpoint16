@@ -39,18 +39,21 @@ public:
                   std::placeholders::_1), options3_odom);
 
     //ref_points.push_back(std::make_tuple(0,0));
+    double cur_ref_phi = 0;
     double cur_ref_x = 0;
     double cur_ref_y = 0;
     //RCLCPP_INFO(this->get_logger(), "initialize ref_point (x,y) = %f,%f ", cur_ref_x, cur_ref_y);
     for (auto iter = waypoints.begin();
      iter != waypoints.end(); iter++){
         std::tuple<double,double,double> i_th = *iter;
+        double dphi = std::get<0>(i_th);
         double dx = std::get<1>(i_th);
         double dy = std::get<2>(i_th);
+        cur_ref_phi += dphi;
         cur_ref_x += dx;
         cur_ref_y += dy;
-        ref_points.push_back(std::make_tuple(cur_ref_x,cur_ref_y));
-        RCLCPP_INFO(this->get_logger(), "initialize ref_point (x,y) = %f,%f ", cur_ref_x, cur_ref_y);
+        ref_points.push_back(std::make_tuple(cur_ref_phi,cur_ref_x,cur_ref_y));
+        RCLCPP_INFO(this->get_logger(), "initialize ref_point phi %f, (x,y) = %f,%f ", cur_ref_phi, cur_ref_x, cur_ref_y);
     }
   
   }
@@ -66,15 +69,14 @@ private:
   }
   void execute() {
     auto message = std_msgs::msg::Float32MultiArray();
+    double error_tolerance = 0.01; 
     //rclcpp::Rate loop_rate(0.01);
     while(!ref_points.empty()){
-        std::tuple<double,double,double> it = waypoints.front();
-        std::tuple<double,double> it2 = ref_points.front();
+        std::tuple<double,double,double> it2 = ref_points.front();
          RCLCPP_INFO(this->get_logger(), "ref_point (x,y) = %f,%f ", std::get<0>(it2), std::get<1>(it2));
-        double dphi = std::get<0>(it); 
-        double error_tolerance = 0.01; 
-        double dx = std::get<0>(it2);
-        double dy = std::get<1>(it2);
+        double dphi = std::get<0>(it2); 
+        double dx = std::get<1>(it2);
+        double dy = std::get<2>(it2);
         go_to(dx,dy, dphi, error_tolerance);
         sleep(1);
         timer1_counter++;
@@ -159,6 +161,7 @@ private:
     auto message = std_msgs::msg::Float32MultiArray();
     double rho = std::numeric_limits<double>::max();
     double theta_goal = normalize_angle(theta_goal_radian);
+    RCLCPP_INFO(get_logger(), "theta_goal %f",theta_goal);  
     int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
     while(rho>tolerance){
         double delta_x = x_goal - current_pos_.x;
@@ -166,6 +169,7 @@ private:
         rho = sqrt(delta_x*delta_x + delta_y*delta_y);
         double alpha = 0;
         double beta  = normalize_angle(theta_goal - (alpha + current_yaw_rad_));
+        RCLCPP_INFO(get_logger(), "beta %f , theta_goal %f",beta,theta_goal);  
         double w = k_alpha*alpha + k_beta*beta;
         MatrixXd vb = velocity2twist(w, delta_x, delta_y);
         RCLCPP_INFO(get_logger(), "rho %f",rho);  
@@ -214,13 +218,13 @@ private:
   double k_beta = -0.15;
 
   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
+                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(0, -0.5, -0.5),std::make_tuple(-1.5708, -0.5, -0.5),std::make_tuple(0.0, -1, 1),
                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
   //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-1.5708,1,1)};//,std::make_tuple(0,1,1)};
-  std::list<std::tuple<double,double>> ref_points;
+  std::list<std::tuple<double,double,double>> ref_points;
  
   rclcpp::TimerBase::SharedPtr timer_1_;
   int timer1_counter;
