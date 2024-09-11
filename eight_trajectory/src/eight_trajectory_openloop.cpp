@@ -9,8 +9,6 @@
 #include "tf2/LinearMath/Matrix3x3.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include <Eigen/Dense>
-
-#define pi 3.1417
  
 using Eigen::MatrixXd;
 using namespace std::chrono_literals;
@@ -68,20 +66,54 @@ private:
     auto message = std_msgs::msg::Float32MultiArray();
     //rclcpp::Rate loop_rate(0.01);
     while(!ref_points.empty()){
+
         std::tuple<double,double,double> it = waypoints.front();
         std::tuple<double,double> it2 = ref_points.front();
          RCLCPP_INFO(this->get_logger(), "ref_point (x,y) = %f,%f ", std::get<0>(it2), std::get<1>(it2));
-        double dphi = std::get<0>(it); 
-        double error_tolerance = 0.01; 
-        double dx = std::get<0>(it2);
-        double dy = std::get<1>(it2);
-        go_to(dx,dy, dphi, error_tolerance);
+
+        double dphi = std::get<0>(it)/3; 
+        double distance_error = 1000;//just a large number
+        double error_tolerance = 0.1; 
+        unsigned int section_counter = 0;
+        while( distance_error > error_tolerance){
+            double dx = std::get<0>(it2) - current_pos_.x;
+            double dy = std::get<1>(it2) - current_pos_.y;
+
+    
+            //int max_iteration = 300;
+                MatrixXd vb = velocity2twist(dphi, dx, dy);
+                std::vector<float> u_vector = twist2wheels(vb);
+                double speed_x = vb(1,0);
+                double speed_y = vb(2,0);
+                double speed_norm = sqrt(speed_x*speed_x+speed_y*speed_y);
+                double distance_to_travel = dphi == 0? sqrt(dx*dx+dy*dy) : abs(dphi*sqrt(dx*dx+dy*dy));
+                double time_to_travel = distance_to_travel/speed_norm;//in sec
+
+                int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
+                int max_iter = time_to_travel*1000000/hz_inverse_us;
+                RCLCPP_INFO(get_logger(), "distance to travel %f, time to travel %f, iter %d", distance_to_travel,time_to_travel, max_iter ); 
+        
+            for (int i=0; i<max_iter;i++){
+                message.data = u_vector;
+                publisher_->publish(message);  
+                //RCLCPP_INFO(get_logger(), "published dphi %f, dx %f, dy %f", vb(0,0), vb(1,0),vb(2,0));  
+                //loop_rate.sleep();
+                usleep(hz_inverse_us);
+                section_counter++;
+            }
+            dx = std::get<0>(it2) - current_pos_.x;
+            dy = std::get<1>(it2) - current_pos_.y;
+            distance_error = dphi == 0? sqrt(dx*dx+dy*dy) : abs(dphi*sqrt(dx*dx+dy*dy));
+
+        }
         sleep(1);
         timer1_counter++;
+
         waypoints.pop_front();
         ref_points.pop_front(); 
     }
     RCLCPP_INFO(get_logger(), "No more waypoints");  
+
   }
 
   MatrixXd velocity2twist(double dphi, double dx, double dy){
@@ -134,48 +166,6 @@ private:
   
   }
 
-  double normalize_angle(double angle_radian){
-    double sign_multiplier, normalized_angle;
-
-    if(angle_radian >= -pi && angle_radian <= pi)
-        return angle_radian;
-
-    if(angle_radian < -pi)
-        sign_multiplier = 1;
-
-    if(angle_radian > pi)
-        sign_multiplier = -1;
-
-    normalized_angle = angle_radian;
-    for (int i=0; i<20; i++){
-        normalized_angle += sign_multiplier*2*pi;
-        if( normalized_angle >= -pi && normalized_angle <= pi)
-            return normalized_angle;
-    }
-    return -100;  
-  }
-
-  void go_to(double x_goal, double y_goal, double theta_goal_radian, double tolerance){
-    auto message = std_msgs::msg::Float32MultiArray();
-    double rho = std::numeric_limits<double>::max();
-    double theta_goal = normalize_angle(theta_goal_radian);
-    int hz_inverse_us = 10000;//10 Hz = 0.01 sec = 10000 microsec 
-    while(rho>tolerance){
-        double delta_x = x_goal - current_pos_.x;
-        double delta_y = y_goal - current_pos_.y;
-        rho = sqrt(delta_x*delta_x + delta_y*delta_y);
-        double alpha = 0;
-        double beta  = normalize_angle(theta_goal - (alpha + current_yaw_rad_));
-        double w = k_alpha*alpha + k_beta*beta;
-        MatrixXd vb = velocity2twist(w, delta_x, delta_y);
-        RCLCPP_INFO(get_logger(), "rho %f",rho);  
-        std::vector<float> u_vector = twist2wheels(vb);
-        message.data = u_vector;
-        publisher_->publish(message);
-        usleep(hz_inverse_us);
-    }
-
-  }
   //------- 3. Odom related  Functions -----------//  
   void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg) {
 
@@ -208,10 +198,6 @@ private:
   double l = 0.500/2;
   double r = 0.254/2;
   double w = 0.548/2;
-  //------- feedback loop private varibales -------//
-  double k_rho = 0.3;   
-  double k_alpha = 0.8;
-  double k_beta = -0.15;
 
   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),
@@ -219,7 +205,7 @@ private:
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
-  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-1.5708,1,1)};//,std::make_tuple(0,1,1)};
+  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-3.14,1,0)};//,std::make_tuple(0,1,1)};
   std::list<std::tuple<double,double>> ref_points;
  
   rclcpp::TimerBase::SharedPtr timer_1_;

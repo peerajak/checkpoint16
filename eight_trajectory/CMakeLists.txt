@@ -35,8 +35,25 @@ target_link_libraries(eight_trajectory
     Eigen3::Eigen
 )
 
+add_executable(eight_trajectory_openloop src/eight_trajectory_openloop.cpp)
+ament_target_dependencies(eight_trajectory_openloop
+rclcpp geometry_msgs nav_msgs std_msgs tf2 tf2_ros)
+target_link_libraries(eight_trajectory_openloop
+    Eigen3::Eigen
+)
+
+add_executable(eight_trajectory_feedbackloop src/eight_trajectory_feedbackloop.cpp)
+ament_target_dependencies(eight_trajectory_feedbackloop
+rclcpp geometry_msgs nav_msgs std_msgs tf2 tf2_ros)
+target_link_libraries(eight_trajectory_feedbackloop
+    Eigen3::Eigen
+)
+
+
 install(TARGETS
    eight_trajectory
+   eight_trajectory_openloop
+   eight_trajectory_feedbackloop
    DESTINATION lib/${PROJECT_NAME}
  )
 
