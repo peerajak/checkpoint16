@@ -165,7 +165,8 @@ private:
         double delta_y = y_goal - current_pos_.y;
         rho = sqrt(delta_x*delta_x + delta_y*delta_y);
         double alpha = 0;
-        double beta  = normalize_angle(theta_goal - (alpha + current_yaw_rad_));
+        double beta  = normalize_angle(-theta_goal - (alpha + current_yaw_rad_));
+        // positive w is ccw ,negative w is cw
         double w = k_alpha*alpha + k_beta*beta;
         MatrixXd vb = velocity2twist(w, delta_x, delta_y);
         RCLCPP_INFO(get_logger(), "rho %f",rho);  
@@ -211,7 +212,7 @@ private:
   //------- feedback loop private varibales -------//
   double k_rho = 0.3;   
   double k_alpha = 0.8;
-  double k_beta = -0.15;
+  double k_beta = 1;//-0.15;
 
   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),std::make_tuple(0.0, -1, 1),

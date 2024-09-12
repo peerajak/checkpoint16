@@ -49,7 +49,7 @@ public:
         double dphi = std::get<0>(i_th);
         double dx = std::get<1>(i_th);
         double dy = std::get<2>(i_th);
-        cur_ref_phi += dphi;
+        cur_ref_phi -= dphi;
         cur_ref_x += dx;
         cur_ref_y += dy;
         ref_points.push_back(std::make_tuple(cur_ref_phi,cur_ref_x,cur_ref_y));
@@ -169,9 +169,11 @@ private:
         double delta_y = y_goal - current_pos_.y;
         rho = sqrt(delta_x*delta_x + delta_y*delta_y);
         double alpha = 0;
-        double beta  = normalize_angle(theta_goal - (alpha + current_yaw_rad_));
-        RCLCPP_INFO(get_logger(), "beta %f , theta_goal %f",beta,theta_goal);  
+        double beta  = normalize_angle(-theta_goal - (alpha + current_yaw_rad_));
         double w = k_alpha*alpha + k_beta*beta;
+        RCLCPP_INFO(get_logger(), "current_yaw_rad_ %f, beta %f , theta_goal %f, w %f",current_yaw_rad_,beta,theta_goal,w);  
+        // positive w is ccw ,negative w is cw
+
         MatrixXd vb = velocity2twist(w, delta_x, delta_y);
         RCLCPP_INFO(get_logger(), "rho %f",rho);  
         std::vector<float> u_vector = twist2wheels(vb);
@@ -216,17 +218,17 @@ private:
   //------- feedback loop private varibales -------//
   double k_rho = 0.3;   
   double k_alpha = 0.8;
-  double k_beta = -0.15;
-//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-//                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),
-//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+  double k_beta = 1;// -0.15;
   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-1.5708, -0.5, -0.5),std::make_tuple(-1.5707, -0.5, -0.5),
+                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),
                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
+//                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-1.5708, -0.5, -0.5),std::make_tuple(-1.5707, -0.5, -0.5),
+//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
-  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-1.5708,1,1)};//,std::make_tuple(0,1,1)};
+  //std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(-1.5708,1,1),std::make_tuple(-1.5708,1,1)};//,std::make_tuple(0,1,1)};
   std::list<std::tuple<double,double,double>> ref_points;
  
   rclcpp::TimerBase::SharedPtr timer_1_;
