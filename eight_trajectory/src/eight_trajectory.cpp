@@ -84,6 +84,7 @@ private:
         ref_points.pop_front(); 
     }
     RCLCPP_INFO(get_logger(), "No more waypoints");  
+    rclcpp::shutdown();
   }
 
   MatrixXd velocity2twist(double dphi, double dx, double dy){
@@ -216,10 +217,12 @@ private:
   double k_rho = 0.3;   
   double k_alpha = 0.8;
   double k_beta = -0.15;
-
+//   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
+//                                 std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-3.1415, -1, -1),
+//                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
-                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(0, -0.5, -0.5),std::make_tuple(-1.5708, -0.5, -0.5),std::make_tuple(0.0, -1, 1),
-                                std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
+                                std::make_tuple(0,1,1),std::make_tuple(1.5708, 1, -1),std::make_tuple(-1.5708, -0.5, -0.5),std::make_tuple(-1.5707, -0.5, -0.5),
+                                std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
 //   std::list<std::tuple<double, double, double>> waypoints {std::make_tuple(0,1,-1),std::make_tuple(0,1,1),
 //                                 std::make_tuple(0,1,1),std::make_tuple(0, 1, -1),std::make_tuple(0, -1, -1),std::make_tuple(0.0, -1, 1),
 //                                 std::make_tuple(0.0, -1, 1),std::make_tuple(0.0, -1, -1)};
