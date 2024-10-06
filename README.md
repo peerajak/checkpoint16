@@ -7,7 +7,7 @@ Test the robot's movements in order to classify it into one of the following gro
 
 ![alt text](Robot_front.png)
 ![alt text](Robot_right.png)
-![alt text](Robot_left.png)
+![alt text](Robot_top.png)
 
 Based on your observations create a ROS2 package named wheel_velocities_publisher with a C++ executable named also wheel_velocities_publisher. It must contain a node that publishes messages of type Float32MultiArray. Each message must contain al four wheel speeds (in rad/sec), one for each of the four robot wheels. The name of the topic should be /wheel_speed.
 
@@ -23,7 +23,7 @@ After that the robot must stop. Each motion must be executed for about 3 seconds
 
 Run the program and confirm you get the topic publishing that data you want it to publish.
 
-![alt text](rosbot-xl-sim)
+![alt text](rosbot-xl-sim.png)
 
 Terminal 1.
 source ~/ros2_ws/install/setup.bash
@@ -42,7 +42,7 @@ Using the Kinematic model, it transforms the four wheel speeds into a twist mess
 Finally, it publishes the twist message into the /cmd_vel topic to make the simulated robot move as intended.
 Create a launch kinematic_model.launch.py file that starts the wheel_velocities_publisher node and kinematic_model node.
 
-![alt text](eight_trajectory_waypoints)
+![alt text](eight_trajectory_waypoints.png)
 
 Terminal 1.
 source ~/ros2_ws/install/setup.bash
